@@ -1,11 +1,13 @@
 # Maintainer: alex3236 <me@alex3236.moe>
-pkgname=genoffice
+pkgname=genoffice-bin
 pkgver=0.8.667
 pkgrel=1
 pkgdesc="Free, open-source AI office suite: docs, sheets, slides, PDF and markdown editors"
 arch=('x86_64')
 url="https://github.com/genspark-ai/genoffice"
 license=('Apache-2.0')
+provides=('genoffice')
+conflicts=('genoffice')
 depends=(
   'alsa-lib'
   'at-spi2-core'

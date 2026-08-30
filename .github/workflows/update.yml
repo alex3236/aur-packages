@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pkg: [pineapple-notepad-bin, genoffice]
+        pkg: [pineapple-notepad-bin, genoffice-bin]
     steps:
       - uses: actions/checkout@v4
 

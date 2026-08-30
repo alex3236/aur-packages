@@ -20,6 +20,6 @@ if git diff --cached --quiet; then
   echo "no changes to push for $NAME"
   exit 0
 fi
-git commit -m "Update to $VER"
+git commit -m "$NAME $VER: update"
 git push
 echo "pushed $NAME $VER"
