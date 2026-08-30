@@ -84,13 +84,14 @@ jobs:
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
+          BODY: |
+            Auto-update of **${{ matrix.pkg }}** to ${{ steps.check.outputs.newver }} failed on $(date -u).
+
+            Check the failing job: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           TITLE="[${{ matrix.pkg }}] update to ${{ steps.check.outputs.newver }} failed"
           if gh issue list --state open --json title --jq '.[].title' | grep -Fxq "$TITLE"; then
             echo "issue already open, skipping"
             exit 0
           fi
-          gh issue create --title "$TITLE" \
-            --body "Auto-update of **${{ matrix.pkg }}** to ${{ steps.check.outputs.newver }} failed on $(date -u).
-
-Check the failing job: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          gh issue create --title "$TITLE" --body "$BODY"
