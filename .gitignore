@@ -4,3 +4,4 @@ pkg/
 *.pkg.tar.zst
 *.deb
 *.log
+EULA
