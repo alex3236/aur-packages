@@ -1,0 +1,11 @@
+# nvchecker config for pineapple-notepad-bin
+# Usage: nvchecker -c nvchecker.toml
+# Upstream tags look like "1.1.0-freeware"; strip the suffix.
+# git source: uses ls-remote, no GitHub API rate limit.
+[pineapple-notepad]
+source = "git"
+git = "https://github.com/BLumia/pineapple-notepad.git"
+use_max_tag = true
+tag_sort = "version"
+from_pattern = '(\d+\.\d+\.\d+)-freeware'
+to_pattern = '\1'

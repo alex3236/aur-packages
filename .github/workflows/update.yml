@@ -1,0 +1,96 @@
+name: Update AUR packages
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # daily 02:00 UTC = 10:00 CST
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: aur-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: ${{ matrix.pkg }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: [pineapple-notepad-bin, genoffice]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream version (nvchecker)
+        id: check
+        run: |
+          pip install --quiet --break-system-packages nvchecker
+          nvchecker -c "${{ matrix.pkg }}/nvchecker.toml" --logger json --json-log-fd 3 3>&1 >/dev/null 2>&1 |
+            jq -r 'select(.event == "updated") | .version' > /tmp/newver
+          NEWVER=$(cat /tmp/newver 2>/dev/null || true)
+          OLDVER=$(grep '^pkgver=' "${{ matrix.pkg }}/PKGBUILD" | cut -d= -f2)
+          if [ -z "$NEWVER" ] || [ "$NEWVER" = "$OLDVER" ]; then
+            echo "no update: current=$OLDVER latest=$NEWVER"
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "update: $OLDVER -> $NEWVER"
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+            echo "newver=$NEWVER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and check (Arch container)
+        if: steps.check.outputs.updated == 'true'
+        env:
+          NEWVER: ${{ steps.check.outputs.newver }}
+        run: |
+          docker run --rm -v "$PWD":/build -w /build archlinux:latest bash -c "
+            pacman -Syu --noconfirm --needed base-devel namcap >/dev/null &&
+            source ${{ matrix.pkg }}/PKGBUILD &&
+            pacman -S --noconfirm --needed \${depends[@]} \${makedepends[@]} >/dev/null &&
+            useradd -m build && chown -R build:build /build &&
+            su build -c 'bash /build/scripts/update_pkg.sh ${{ matrix.pkg }} $NEWVER'
+          "
+
+      - name: Commit and push to this repo
+        if: steps.check.outputs.updated == 'true'
+        env:
+          NEWVER: ${{ steps.check.outputs.newver }}
+        run: |
+          git config user.name "alex3236"
+          git config user.email "me@alex3236.moe"
+          git add "${{ matrix.pkg }}/PKGBUILD" "${{ matrix.pkg }}/.SRCINFO"
+          if git diff --cached --quiet; then
+            echo "no diff to commit"
+            exit 0
+          fi
+          git commit -m "${{ matrix.pkg }}: update to $NEWVER"
+          git push
+
+      - name: Push to AUR
+        if: steps.check.outputs.updated == 'true'
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "$AUR_SSH_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
+          bash scripts/push_aur.sh "${{ matrix.pkg }}" "${{ matrix.pkg }}"
+
+      - name: Open issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="[${{ matrix.pkg }}] update to ${{ steps.check.outputs.newver }} failed"
+          if gh issue list --state open --json title --jq '.[].title' | grep -Fxq "$TITLE"; then
+            echo "issue already open, skipping"
+            exit 0
+          fi
+          gh issue create --title "$TITLE" \
+            --body "Auto-update of **${{ matrix.pkg }}** to ${{ steps.check.outputs.newver }} failed on $(date -u).
+
+Check the failing job: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

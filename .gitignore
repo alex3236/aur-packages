@@ -1,0 +1,6 @@
+# build artifacts
+src/
+pkg/
+*.pkg.tar.zst
+*.deb
+*.log
