@@ -47,7 +47,7 @@ jobs:
           NEWVER: ${{ steps.check.outputs.newver }}
         run: |
           docker run --rm -v "$PWD":/build -w /build archlinux:latest bash -c "
-            pacman -Syu --noconfirm --needed base-devel namcap >/dev/null &&
+            pacman -Syu --noconfirm --needed base-devel namcap pacman-contrib >/dev/null &&
             source ${{ matrix.pkg }}/PKGBUILD &&
             pacman -S --noconfirm --needed \${depends[@]} \${makedepends[@]} >/dev/null &&
             useradd -m build && chown -R build:build /build &&
@@ -85,7 +85,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BODY: |
-            Auto-update of **${{ matrix.pkg }}** to ${{ steps.check.outputs.newver }} failed on $(date -u).
+            Auto-update of **${{ matrix.pkg }}** to ${{ steps.check.outputs.newver }} failed.
 
             Check the failing job: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
