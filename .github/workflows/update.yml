@@ -50,7 +50,7 @@ jobs:
             pacman -Syu --noconfirm --needed base-devel namcap pacman-contrib >/dev/null &&
             source ${{ matrix.pkg }}/PKGBUILD &&
             pacman -S --noconfirm --needed \${depends[@]} \${makedepends[@]} >/dev/null &&
-            useradd -m build && chown -R build:build /build &&
+            useradd -m build && chown -R build:build "/build/${{ matrix.pkg }}" &&
             su build -c 'bash /build/scripts/update_pkg.sh ${{ matrix.pkg }} $NEWVER'
           "
 
@@ -79,6 +79,15 @@ jobs:
           ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o IdentitiesOnly=yes"
           bash scripts/push_aur.sh "${{ matrix.pkg }}" "${{ matrix.pkg }}"
+
+      - name: Close stale issue
+        if: steps.check.outputs.updated == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: "[${{ matrix.pkg }}] update to ${{ steps.check.outputs.newver }} failed"
+        run: |
+          gh issue list --state open --json number,title --jq '.[] | select(.title == $ENV.TITLE) | .number' |
+            while read -r n; do gh issue close "$n" -c "Fixed by the automated update to ${{ steps.check.outputs.newver }}"; done
 
       - name: Open issue on failure
         if: failure()
