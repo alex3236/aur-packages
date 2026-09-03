@@ -6,6 +6,7 @@ pkgdesc="Free, open-source AI office suite: docs, sheets, slides, PDF and markdo
 arch=('x86_64')
 url="https://github.com/genspark-ai/genoffice"
 license=('Apache-2.0')
+options=('!debug')
 provides=('genoffice')
 conflicts=('genoffice')
 depends=(
