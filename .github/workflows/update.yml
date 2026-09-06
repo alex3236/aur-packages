@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pkg: [pineapple-notepad-bin, genoffice-bin]
+        pkg: [pineapple-notepad-bin, genoffice-bin, gety-bin]
     steps:
       - uses: actions/checkout@v4
 
@@ -126,3 +126,32 @@ jobs:
             exit 0
           fi
           gh issue create --title "$TITLE" --body "$BODY"
+
+      - name: Watch terms of service changes (gety-bin)
+        if: matrix.pkg == 'gety-bin'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RAW=$(curl -sL --max-time 20 https://gety.ai/terms | grep -oE 'Effective as of: [A-Z][a-z]+ [0-9]{1,2}, [0-9]{4}' | head -1 | sed 's/Effective as of: //')
+          if [ -z "$RAW" ]; then
+            echo "could not extract terms effective date; skipping"
+            exit 0
+          fi
+          ISO=$(python3 -c "
+          import sys
+          months = {'January':1,'February':2,'March':3,'April':4,'May':5,'June':6,'July':7,'August':8,'September':9,'October':10,'November':11,'December':12}
+          m, d, y = sys.argv[1].replace(',','').split()
+          print(f'{y}-{months[m]:02d}-{int(d):02d}')
+          " "$RAW")
+          CUR=$(cat gety-bin/terms-effective-date)
+          if [ "$ISO" != "$CUR" ]; then
+            echo "terms effective date changed: $CUR -> $ISO"
+            TITLE="[gety-bin] Terms of Service updated ($ISO)"
+            if gh issue list --state open --json title --jq '.[].title' | grep -Fxq "$TITLE"; then
+              echo "issue already open"
+              exit 0
+            fi
+            gh issue create --title "$TITLE" --body "Gety's Terms of Service (https://gety.ai/terms) effective date changed: tracked \`$CUR\` -> \`$ISO\`.\n\nRefresh \`gety-bin/gety-license.txt\` and update \`gety-bin/terms-effective-date\` to \`$ISO\`."
+          else
+            echo "terms unchanged ($ISO)"
+          fi
