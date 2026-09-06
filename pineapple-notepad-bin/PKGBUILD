@@ -7,6 +7,7 @@ pkgdesc="A Qt 6, KDE Framework and Scintilla-based Cross-Platform Notepad++ Alte
 arch=('x86_64')
 url="https://github.com/BLumia/pineapple-notepad"
 license=('LicenseRef-Pineapple-Notepad-EULA')
+options=('!debug')
 depends=(
     'gcc-libs'
     'glibc'

@@ -24,6 +24,7 @@ pkgbase = pineapple-notepad-bin
 	optdepends = breeze: Breeze widget style for Qt (recommended for best experience)
 	provides = pineapple-notepad
 	conflicts = pineapple-notepad
+	options = !debug
 	source = pineapple-notepad-bin-1.1.0-deepin.deb::https://github.com/BLumia/pineapple-notepad/releases/download/1.1.0-freeware/pineapple-notepad-deepin-crimson-x86_64-1.1.0.deb
 	source = pineapple-notepad-bin-1.1.0-debian.deb::https://github.com/BLumia/pineapple-notepad/releases/download/1.1.0-freeware/pineapple-notepad-debian-trixie-x86_64-1.1.0.deb
 	source = EULA::https://raw.githubusercontent.com/BLumia/pineapple-notepad/master/LICENSE
