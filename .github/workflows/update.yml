@@ -19,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # All matrix jobs commit to the same branch, so they must not run
+      # concurrently or the loser's push is rejected as non-fast-forward.
+      max-parallel: 1
       matrix:
         pkg: [pineapple-notepad-bin, genoffice-bin, gety-bin]
     steps:
