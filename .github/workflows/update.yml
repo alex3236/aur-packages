@@ -23,7 +23,7 @@ jobs:
       # concurrently or the loser's push is rejected as non-fast-forward.
       max-parallel: 1
       matrix:
-        pkg: [pineapple-notepad-bin, genoffice-bin, gety-bin]
+        pkg: [pineapple-notepad-bin, genoffice-bin, gety-bin, zed-i18n-bin]
     steps:
       - uses: actions/checkout@v4
 
@@ -47,9 +47,19 @@ jobs:
       - name: Verify Linux .deb assets exist
         id: verify
         if: steps.check.outputs.updated == 'true'
+        env:
+          NEWVER: ${{ steps.check.outputs.newver }}
         run: |
           cd "${{ matrix.pkg }}"
-          URLS=$(awk '/^source=\(/,/^\)/' PKGBUILD | grep -oE "https://[^'\" )]+" | sed "s/\${pkgver}/${{ steps.check.outputs.newver }}/g" | sort -u)
+          # Expand ${source[@]} the way makepkg would, from a copy of the PKGBUILD
+          # with the candidate version substituted. This handles any derivation,
+          # not just a literal ${pkgver}: e.g. zed-i18n maps pkgver 1.22.0+i18n.1
+          # to the tag v1.22.0-i18n.1, and pineapple appends a -freeware suffix.
+          tmp=$(mktemp)
+          sed "s/^pkgver=.*/pkgver=$NEWVER/" PKGBUILD > "$tmp"
+          URLS=$(bash -c 'source "$1"; printf "%s\n" "${source[@]}"' bash "$tmp" 2>/dev/null |
+            sed 's/^[^:]*:://' | grep -oE 'https?://[^ ]+' | sort -u) || true
+          rm -f "$tmp"
           if [ -z "$URLS" ]; then
             echo "no http sources found, nothing to verify"
             echo "has_deb=true" >> "$GITHUB_OUTPUT"
