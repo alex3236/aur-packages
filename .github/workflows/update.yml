@@ -19,8 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # All matrix jobs commit to the same branch, so they must not run
-      # concurrently or the loser's push is rejected as non-fast-forward.
+      # Serialising the jobs keeps the log readable and removes the race between
+      # one job's fetch and another's push. Correctness does not depend on it:
+      # the commit step rebases onto the current head before pushing.
       max-parallel: 1
       matrix:
         pkg: [pineapple-notepad-bin, genoffice-bin, gety-bin, zed-i18n-bin]
@@ -102,7 +103,22 @@ jobs:
             exit 0
           fi
           git commit -m "${{ matrix.pkg }}: update to $NEWVER"
-          git push
+          # actions/checkout fetches the commit that triggered the run, not the
+          # current head of the branch, so a package earlier in this same run
+          # can have pushed after we checked out. Replay our commit onto the
+          # fresh head and retry: the packages touch different directories, so
+          # the rebase cannot conflict.
+          for attempt in 1 2 3; do
+            git fetch --depth=1 origin "$GITHUB_REF_NAME"
+            git rebase FETCH_HEAD
+            if git push; then
+              exit 0
+            fi
+            echo "push rejected (remote moved ahead); retrying"
+            sleep $((attempt * 5))
+          done
+          echo "::error::could not push to $GITHUB_REF_NAME after 3 attempts"
+          exit 1
 
       - name: Push to AUR
         if: steps.check.outputs.updated == 'true' && steps.verify.outputs.has_deb == 'true'
