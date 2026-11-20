@@ -95,6 +95,10 @@ jobs:
         env:
           NEWVER: ${{ steps.check.outputs.newver }}
         run: |
+          # The build container chowns the package directory to its own build
+          # user (uid 1000), which is not the runner's uid, so git cannot
+          # rewrite those files when it replays our commit below.
+          sudo chown -R "$(id -u):$(id -g)" "${{ matrix.pkg }}"
           git config user.name "alex3236"
           git config user.email "me@alex3236.moe"
           git add "${{ matrix.pkg }}/PKGBUILD" "${{ matrix.pkg }}/.SRCINFO"
