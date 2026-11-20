@@ -9,8 +9,10 @@ PKG="$1"
 VER="$2"
 cd "$PKG"
 
-# 1. bump pkgver
+# 1. bump pkgver and reset pkgrel: pkgrel counts packaging revisions of one
+#    upstream version, so a new version starts at 1
 sed -i "s/^pkgver=.*/pkgver=$VER/" PKGBUILD
+sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
 
 # 2. refresh checksums (re-downloads sources; SKIP entries are preserved)
 updpkgsums
